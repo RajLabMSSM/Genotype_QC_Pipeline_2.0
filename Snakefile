@@ -36,6 +36,7 @@ print('out_folder: ', out_folder)
 print('data_name: ', data_name)
 print('suffix: ', suffix)
 print('file_names:', file_names)
+print('keep_int', keep_int, type(keep_int))
 
 # Make intermediate directories here
 pathlib.Path(out_folder + "prepped_data").mkdir(parents=True, exist_ok=True)
@@ -50,7 +51,7 @@ pathlib.Path(out_folder + "temp").mkdir(parents=True, exist_ok=True)
 rule all:
     input:
         #temp_output
-        expand(out_folder + 'MAF/{file_name}.vcf.gz', file_name=file_names),
+        #expand(out_folder + 'MAF/{file_name}.vcf.gz', file_name=file_names),
         expand(out_folder + "clean_data/" + data_name + "{suff}", suff=['_MAF.vcf.gz', '_noMAF.vcf.gz']),
         #out_folder + "clean_data/" + data_name + "_noMAF.vcf.gz",
         #out_folder + "population/somalier.html",
@@ -60,6 +61,7 @@ rule all:
         #outFolder + data_name + "/filtered_data/" + data_name + ".MAF.vcf.gz",
         #outFolder + data_name + "/filtered_data/" + data_name + ".noMAF.vcf.gz"
 
+# Convert input data (for now only VCFs) into plink2 files - 1 file per chromosome
 rule prep_data:
     input: 
         in_folder + "{file_name}" + suffix
@@ -70,6 +72,9 @@ rule prep_data:
             shell("ml plink/2.0dev060421;\
                    plink2 --vcf {input} --max-alleles 2 --make-pgen --out {out_folder}prepped_data/{wildcards.file_name};")
 
+# Apply Missingness filters:
+# First round of filtering with a higher missingness threshold to account for serious technical errors. 
+# Second round uses a more standard filtering threshold
 rule missingness:
     input: 
         expand(out_folder + "prepped_data/{{file_name}}{plink_suffix}", plink_suffix=plink_suffix)
@@ -88,6 +93,7 @@ rule missingness:
                plink2 --pfile {out_folder}missing/{wildcards.file_name}_mind1 --geno {params.geno} --make-pgen --out {out_folder}missing/{wildcards.file_name}_geno2;\
                plink2 --pfile {out_folder}missing/{wildcards.file_name}_geno2 --mind {params.mind} --make-pgen --out {out_folder}missing/{wildcards.file_name}_mind2;')
 
+# Apply Hardy Weinberg filters
 rule HWE:
     input:
         expand(out_folder + "missing/{{file_name}}_mind2{plink_suffix}", plink_suffix=plink_suffix)
@@ -103,6 +109,8 @@ rule HWE:
                plink2 --pfile {out_folder}hwe/{wildcards.file_name}_step1 --hwe {params.step2} --make-pgen --out {out_folder}hwe/{wildcards.file_name}_step2;\
                plink2 --pfile {out_folder}hwe/{wildcards.file_name}_step2 --recode vcf "bgz" --out {out_folder}hwe/{wildcards.file_name}')
 
+# Apply Minor Allele Frequency filter
+# Final data will include a MAFed dataset and an unMAFed dataset
 rule MAF:
     input:
         out_folder + "hwe/{file_name}.vcf.gz"
@@ -116,6 +124,8 @@ rule MAF:
                plink2 --pfile {out_folder}hwe/{wildcards.file_name}_step2 --freq --out {out_folder}QC_stats/{wildcards.file_name}_MAF;\
                plink2 --pfile {out_folder}hwe/{wildcards.file_name}_step2 --maf {params.MAF} --recode vcf "bgz" --out {out_folder}MAF/{wildcards.file_name}')
 
+# Generate a list of sample IDs from each of the chromosome files.
+# Create a new list containing only the intersection of all sample IDs - i.e. only the samples that exist in ALL chrom files
 rule generate_sample_IDs:
     input:
         expand(out_folder + "hwe/{file_name}.vcf.gz", file_name=file_names),
@@ -129,6 +139,7 @@ rule generate_sample_IDs:
                for i in {out_folder}MAF/*.vcf.gz; do bcftools query -l $i >> {out_folder}temp/$(basename -s .vcf.gz $i)_samples.txt; done;\
                sort {out_folder}/temp/* | uniq -d >> {out_folder}/temp/sample_intersection.txt')
 
+# Filter each chrom file using the new list of intersected IDs
 rule filter_files:
     input:
         out_folder + "temp/sample_intersection.txt"
@@ -146,7 +157,8 @@ rule filter_files:
                bcftools view --force-samples -S {input} {out_folder}MAF/{wildcards.file_name}.vcf.gz -Oz > {out_folder}/temp/{wildcards.file_name}_MAF.vcf.gz;\
                bcftools view --force-samples -S {input} {out_folder}hwe/{wildcards.file_name}.vcf.gz -Oz > {out_folder}/temp/{wildcards.file_name}_noMAF.vcf.gz')
 
-
+# Concatenate individual chrom files into one.
+# Then sort and index VCFs. These are the final output VCF data
 rule merge_files:
     input:
         expand(out_folder + "temp/{file_name}_MAF.vcf.gz", file_name=file_names),
@@ -162,30 +174,19 @@ rule merge_files:
                #sort {out_folder}/temp1/* | uniq -d >> {out_folder}/temp1/sample_intersection.txt;\
                #for i in {file_names}; do bcftools view --force-samples -S {out_folder}/temp1/sample_intersection.txt {out_folder}/MAF/$i.vcf.gz -Oz > {out_folder}/temp1/$i.MAF.vcf.gz; bcftools view --force-samples -S {out_folder}temp1/sample_intersection.txt {out_folder}hwe/$i.vcf.gz -Oz > {out_folder}/temp1/$i.noMAF.vcf.gz; done;\
         shell('ml bcftools;\
-               bcftools concat {out_folder}/temp/*{wildcards.suff} | bgzip -c > {out_folder}clean_data/{data_name}{wildcards.suff};\
+               bcftools concat {out_folder}/temp/*{wildcards.suff} | bgzip -c > {out_folder}temp/{data_name}_temp{wildcards.suff};\
+               tabix {out_folder}temp/{data_name}_temp{wildcards.suff};\
+               bcftools sort {out_folder}temp/{data_name}_temp{wildcards.suff} -Oz -o {out_folder}clean_data/{data_name}{wildcards.suff};\
                tabix {out_folder}clean_data/{data_name}{wildcards.suff}')
                #bcftools concat {out_folder}/temp/*.MAF.vcf.gz | bgzip -c > {out_folder}clean_data/{data_name}_MAF.vcf.gz;\
                #bcftools concat {out_folder}/temp/*.noMAF.vcf.gz | bgzip -c > {out_folder}clean_data/{data_name}_noMAF.vcf.gz;\
                #tabix {out_folder}clean_data/{data_name}_noMAF.vcf.gz')
 
 
-#rule merge_convert_to_vcf:
-#    input:
-#        expand(out_folder + "hwe/{file_name}_step2{plink_suffix}", file_name=file_names, plink_suffix=plink_suffix),
-#        expand(out_folder + "MAF/{file_name}{plink_suffix}", file_name=file_names, plink_suffix=plink_suffix)
-#    output:
-#        out_folder + "clean_data/" + data_name + "_MAF.vcf.gz",
-#        out_folder + "clean_data/" + data_name + "_noMAF.vcf.gz"
-#    run:
-#        #shell('for i in {out_folder}/MAF/*; do echo $(pw)${i%.*} >> mergelist.txt; done;\
-#        #       plink2 --pmerge-list mergelist.txt --sort-vars --make-pgen --out')
-#        shell('ml plink/2.0dev060421;\
-#               mkdir {out_folder}/clean_data/temp1; mkdir {out_folder}/clean_data/temp2;\
-#               for i in {file_names};\
-#               do plink2 --pfile {out_folder}MAF/$i --recode vcf "bgz" --out {out_folder}/clean_data/temp1/$i_MAF\
-#               do plink2 --pfile {out_folder}hwe/$i_step2 --recode vcf "bgz" --out {out_folder}/clean_data/temp1/$i_noMAF'\
-#               )
 
+# Use Somalier software to generate list of relatedness and ancestry among all samples
+# This step does NOT perform filtration - user should manually filter based on output
+# This step DOES delete all the intermediate files though (if specified by user)
 rule relatedness_ancestry:
     input:
         out_folder + "clean_data/" + data_name + "_noMAF.vcf.gz"
@@ -203,7 +204,12 @@ rule relatedness_ancestry:
                cd {out_folder}population/;\
                $somalier relate extracted/*.somalier;\
                $somalier ancestry --labels {params.ancestry_labels} {params.labeled_samples}*.somalier ++ extracted/*.somalier')
-
+        if keep_int==0:
+            shell('rm -rf {out_folder}prepped_data;\
+                   rm -rf {out_folder}missing;\
+                   rm -rf {out_folder}MAF;\
+                   rm -rf {out_folder}hwe;\
+                   rm -rf {out_folder}temp')
 
 
 
