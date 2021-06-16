@@ -1,4 +1,4 @@
-# Genotype QC Pipeline
+# Genotype QC Pipeline 2.0
 
 Author: Ben Muller
 
@@ -8,16 +8,16 @@ Move or symlink all vcf files into one folder. This is your input folder
 
 ### Step 2:
 Edit `config.yaml` as necessary: 
-- inFolder - input folder containing all vcf files
-- suffix - keep as .vcf.gz for now
-- outFolder - output folder where you want the cleaned data to be stored
-- data_name - name your dataset. All files will be concatted into one with this name.
+- inFolder - the input folder containing all input files.
+- suffix - options are 'vcf' or 'plink' depending on the input file type. Keep as 'vcf' for now, support for plink input will come soon!
+- outFolder - the output folder where you want the output to go.
+- data_name - name your dataset. All files will be concatted into one with this name. The final output will consist of files named <data_name>.MAF.vcf.gz and the like.
 
 All other configurations allow you to keep intermediate files and change filtering thresholds for QC. They are all defined inside `config.yaml`
 
 ### Step 3:
 Edit `cluster.yaml` file as necessary. This file is used to specfiy resources when submitting a snakemake job to the cluster.
-Tip: Really only worry about `queue`, `mem`, and `time`
+Tip: Really only worry about `queue`, `mem`, and `time`. You could probably leave the whole thing as is.
 
 ### Step 4:
 Running the Pipeline

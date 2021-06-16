@@ -9,7 +9,7 @@ input_type: "vcf"
 out_folder: "output/"
 
 # Name of your data - the output files generated will be named <data_name>_hg38_all_chr.vcf.gz
-data_name: "gsa_microglia_05-2021"
+data_name: "gsa_microglia_05-2021_allAncestry"
 
 # Do you want to keep the intermediate files? It can be helpful for debugging
 # They do take up a lot of storage though. 0 = No; 1 = Yes. 

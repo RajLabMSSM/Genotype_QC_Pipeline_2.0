@@ -194,7 +194,7 @@ rule relatedness_ancestry:
         out_folder + "population/somalier.html",
         out_folder + "population/somalier-ancestry.somalier-ancestry.html"
     params:
-        sites="/sc/arion/projects/ad-omics/data/software/somalier_0.2.12/sites/sites.hg38.nochr.vcf.gz",
+        sites="/sc/arion/projects/ad-omics/data/software/somalier_0.2.12/sites/sites.hg38.vcf.gz",
         ref="/sc/arion/projects/ad-omics/data/references/hg38_reference/hg38.fa",
         ancestry_labels="/sc/arion/projects/ad-omics/data/software/somalier_0.2.12/ancestry/ancestry-labels-1kg.tsv",
         labeled_samples="/sc/arion/projects/ad-omics/data/software/somalier_0.2.12/ancestry/1kg-somalier/"
