@@ -48,6 +48,10 @@ pathlib.Path(out_folder + "clean_data").mkdir(parents=True, exist_ok=True)
 pathlib.Path(out_folder + "QC_stats").mkdir(parents=True, exist_ok=True)
 pathlib.Path(out_folder + "temp").mkdir(parents=True, exist_ok=True)
 
+#ruleorder: prep_data > missingness > HWE > MAF > generate_sample_IDs > filter_files > merge_files > index_files > sort_files > relatedness_ancestry
+#wildcard_constraints:
+#    suff=['_MAF.vcf.gz', '_noMAF.vcf.gz']
+
 rule all:
     input:
         #temp_output
@@ -147,41 +151,59 @@ rule filter_files:
         #out_folder + "hwe/{file_name}.vcf.gz",
         #out_folder + "MAF/{file_name}.vcf.gz"
     output:
-        out_folder + "temp/{file_name}_MAF.vcf.gz",
-        out_folder + "temp/{file_name}_noMAF.vcf.gz"
-    run:
+        out_folder + "temp/{file_name}_sorted_MAF.vcf.gz",
+        out_folder + "temp/{file_name}_sorted_noMAF.vcf.gz"
         #shell('ml bcftools;\
         #       rm -rf {out_folder}temp; mkdir -p {out_folder}temp;\
         #       bcftools query -l {out_folder}/MAF/{wildcards.file_name}.vcf.gz >> {out_folder}/temp/{wildcards.file_name}_samples.txt;\
-        shell('ml bcftools;\
-               bcftools view --force-samples -S {input} {out_folder}MAF/{wildcards.file_name}.vcf.gz -Oz > {out_folder}/temp/{wildcards.file_name}_MAF.vcf.gz;\
-               bcftools view --force-samples -S {input} {out_folder}hwe/{wildcards.file_name}.vcf.gz -Oz > {out_folder}/temp/{wildcards.file_name}_noMAF.vcf.gz')
+    shell:
+        'ml bcftools;\
+         bcftools view --force-samples -S {input} {out_folder}MAF/{wildcards.file_name}.vcf.gz -Oz > {out_folder}/temp/{wildcards.file_name}_MAF.vcf.gz;\
+         bcftools view --force-samples -S {input} {out_folder}hwe/{wildcards.file_name}.vcf.gz -Oz > {out_folder}/temp/{wildcards.file_name}_noMAF.vcf.gz;\
+         tabix {out_folder}/temp/{wildcards.file_name}_MAF.vcf.gz;\
+         tabix {out_folder}/temp/{wildcards.file_name}_noMAF.vcf.gz;\
+         bcftools sort {out_folder}/temp/{wildcards.file_name}_MAF.vcf.gz -Oz -o {out_folder}/temp/{wildcards.file_name}_sorted_MAF.vcf.gz;\
+         bcftools sort {out_folder}/temp/{wildcards.file_name}_noMAF.vcf.gz -Oz -o {out_folder}/temp/{wildcards.file_name}_sorted_noMAF.vcf.gz'
 
 # Concatenate individual chrom files into one.
 # Then sort and index VCFs. These are the final output VCF data
 rule merge_files:
     input:
-        expand(out_folder + "temp/{file_name}_MAF.vcf.gz", file_name=file_names),
-        expand(out_folder + "temp/{file_name}_noMAF.vcf.gz", file_name=file_names)
+        #expand(out_folder + "temp/{file_name}_MAF.vcf.gz", file_name=file_names),
+        #expand(out_folder + "temp/{file_name}_noMAF.vcf.gz", file_name=file_names)
+        expand(out_folder + "temp/{file_name}_sorted{{suff}}", file_name=file_names)
     output:
         out_folder + "clean_data/" + data_name + "{suff}"
-        #out_folder + "clean_data/" + data_name + "_noMAF.vcf.gz",
-        #out_folder + "clean_data/" + data_name + "_MAF.vcf.gz"
-    run:
-        #shell('ml bcftools;\
-               #rm -rf {out_folder}temp1; mkdir -p {out_folder}temp1;\
-               #for i in {out_folder}/MAF/*gz; do bcftools query -l $i >> {out_folder}/temp1/$(basename -s .vcf.gz $i)_samples.txt; done;\
-               #sort {out_folder}/temp1/* | uniq -d >> {out_folder}/temp1/sample_intersection.txt;\
-               #for i in {file_names}; do bcftools view --force-samples -S {out_folder}/temp1/sample_intersection.txt {out_folder}/MAF/$i.vcf.gz -Oz > {out_folder}/temp1/$i.MAF.vcf.gz; bcftools view --force-samples -S {out_folder}temp1/sample_intersection.txt {out_folder}hwe/$i.vcf.gz -Oz > {out_folder}/temp1/$i.noMAF.vcf.gz; done;\
-        shell('ml bcftools;\
-               bcftools concat {out_folder}/temp/*{wildcards.suff} | bgzip -c > {out_folder}temp/{data_name}_temp{wildcards.suff};\
-               tabix {out_folder}temp/{data_name}_temp{wildcards.suff};\
-               bcftools sort {out_folder}temp/{data_name}_temp{wildcards.suff} -Oz -o {out_folder}clean_data/{data_name}{wildcards.suff};\
-               tabix {out_folder}clean_data/{data_name}{wildcards.suff}')
-               #bcftools concat {out_folder}/temp/*.MAF.vcf.gz | bgzip -c > {out_folder}clean_data/{data_name}_MAF.vcf.gz;\
-               #bcftools concat {out_folder}/temp/*.noMAF.vcf.gz | bgzip -c > {out_folder}clean_data/{data_name}_noMAF.vcf.gz;\
-               #tabix {out_folder}clean_data/{data_name}_noMAF.vcf.gz')
+        #out_folder + "temp2/" + "merged_" + data_name + "{suff}.tbi"
+    shell: 
+        'ml bcftools;\
+         bcftools concat {input} | bgzip -c > {out_folder}clean_data/{data_name}{wildcards.suff}'
 
+
+# New rule to index the file. 
+# Why? Because if the indexing fails as it's doing now, a new rule will prevent the need to re-concat all the files which takes bloody forever.
+rule index_files:
+    input:
+        out_folder + "clean_data/" + data_name + "{suff}"
+    output:
+        out_folder + "clean_data/" + data_name + "{suff}.tbi"
+    shell:
+        'ml bcftools;\
+         tabix {input}'
+
+
+# sorting vcf file
+#rule sort_files:
+#    input:
+#        #out_folder + "temp2/" + "merged_" + data_name + "{suff}"
+#        out_folder + "temp2/" + "merged_" + data_name + "{suff}.tbi"
+#    output:
+#        out_folder + "clean_data/" + data_name + "{suff}"
+#        #out_folder + "clean_data/" + data_name + "{suff}.tbi"
+#    run:
+#        shell('ml bcftools;\
+#               bcftools sort {out_folder}temp2/merged_{data_name}{wildcards.suff} -Oz -o {out_folder}clean_data/{data_name}{wildcards.suff};\
+#               tabix {out_folder}clean_data/{data_name}{wildcards.suff}')
 
 
 # Use Somalier software to generate list of relatedness and ancestry among all samples
@@ -189,7 +211,8 @@ rule merge_files:
 # This step DOES delete all the intermediate files though (if specified by user)
 rule relatedness_ancestry:
     input:
-        out_folder + "clean_data/" + data_name + "_noMAF.vcf.gz"
+        out_folder + "clean_data/" + data_name + "_noMAF.vcf.gz",
+        out_folder + "clean_data/" + data_name + "_noMAF.vcf.gz.tbi"
     output:
         out_folder + "population/somalier.html",
         out_folder + "population/somalier-ancestry.somalier-ancestry.html"

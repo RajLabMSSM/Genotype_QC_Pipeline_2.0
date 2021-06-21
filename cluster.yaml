@@ -1,7 +1,7 @@
 __default__:
   queue: premium
-  cores: 4
-  mem: 8000
+  cores: 12
+  mem: 16000
   time: '600'
   name: $(basename $(pwd)):{rule}:{wildcards}
   output: logs/{rule}:{wildcards}.stdout
