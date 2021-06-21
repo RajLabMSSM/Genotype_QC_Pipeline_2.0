@@ -59,7 +59,7 @@ I'll add fixes for these (and more) later on.
 There will be 3 main output folders:
 
 1. `clean_data` - contains two QCed data files, one including the MAF step (.MAF) and one not including the MAF step (.noMAF).
-2. `population` - contains an html and tsv files containing information on both relatedness (`somalier.\*`) and ancestry (`somalier-ancestry.somalier-ancestry.\*`). Use these to manually filter your data as you see fit.
+2. `population` - contains an html and tsv files containing information on both relatedness (`somalier.*`) and ancestry (`somalier-ancestry.somalier-ancestry.*`). Use these to manually filter your data as you see fit.
 3. `QC_stats` - contains filtering statistics for each of the 3 QC steps: missingness, MAF, and Hardy Weinberg.
 
 
