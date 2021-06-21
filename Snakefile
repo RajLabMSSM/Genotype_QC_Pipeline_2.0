@@ -111,7 +111,7 @@ rule HWE:
                plink2 --pfile {out_folder}missing/{wildcards.file_name}_mind2 --hardy --out {out_folder}QC_stats/{wildcards.file_name}_hwe;\
                plink2 --pfile {out_folder}missing/{wildcards.file_name}_mind2 --hwe {params.step1} --make-pgen --out {out_folder}hwe/{wildcards.file_name}_step1;\
                plink2 --pfile {out_folder}hwe/{wildcards.file_name}_step1 --hwe {params.step2} --make-pgen --out {out_folder}hwe/{wildcards.file_name}_step2;\
-               plink2 --pfile {out_folder}hwe/{wildcards.file_name}_step2 --recode vcf "bgz" --out {out_folder}hwe/{wildcards.file_name}')
+               plink2 --pfile {out_folder}hwe/{wildcards.file_name}_step2 --recode vcf "bgz" --output-chr chrM --out {out_folder}hwe/{wildcards.file_name}')
 
 # Apply Minor Allele Frequency filter
 # Final data will include a MAFed dataset and an unMAFed dataset
@@ -126,7 +126,7 @@ rule MAF:
     run:
         shell('ml plink/2.0dev060421;\
                plink2 --pfile {out_folder}hwe/{wildcards.file_name}_step2 --freq --out {out_folder}QC_stats/{wildcards.file_name}_MAF;\
-               plink2 --pfile {out_folder}hwe/{wildcards.file_name}_step2 --maf {params.MAF} --recode vcf "bgz" --out {out_folder}MAF/{wildcards.file_name}')
+               plink2 --pfile {out_folder}hwe/{wildcards.file_name}_step2 --maf {params.MAF} --recode vcf "bgz" --output-chr chrM --out {out_folder}MAF/{wildcards.file_name}')
 
 # Generate a list of sample IDs from each of the chromosome files.
 # Create a new list containing only the intersection of all sample IDs - i.e. only the samples that exist in ALL chrom files
