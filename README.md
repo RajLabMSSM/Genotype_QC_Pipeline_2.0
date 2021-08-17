@@ -35,7 +35,7 @@ You can run in an interactive job:
 
 1. Like so:
 ```
-snakemake -s Snakefile
+snakemake -s Snakefile --cores <num_cores>
 ```
  Or you can submit Snakejobs to the cluster (see `RajLabMSSM/RNA-pipelines/snakejob/` for more info).
 
@@ -51,7 +51,7 @@ snakejob_HPC -s Snakefile -c config.yaml
 ## Important Notes
 - As mentioned above, the pipeline assumes `chr` chromosome naming.
 - A liftover step not included. you must lift to hg38 before running
-- input must be `.vcf` format, with one file per chrom.
+- input must be `.vcf.gz` format, with one file per chrom.
 
 I'll add fixes for these (and more) later on.
 
