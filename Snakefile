@@ -56,7 +56,7 @@ rule all:
     input:
         #temp_output
         #expand(out_folder + 'MAF/{file_name}.vcf.gz', file_name=file_names),
-        expand(out_folder + "clean_data/" + data_name + "{suff}", suff=['_MAF.vcf.gz', '_noMAF.vcf.gz']),
+        expand(out_folder + "clean_data/" + data_name + "{suff}", suff=['MAF.vcf.gz', 'noMAF.vcf.gz']),
         #out_folder + "clean_data/" + data_name + "_noMAF.vcf.gz",
         #out_folder + "population/somalier.html",
         out_folder + "population/somalier-ancestry.somalier-ancestry.html"
@@ -180,13 +180,26 @@ rule merge_files:
          bcftools concat {input} | bgzip -c > {out_folder}clean_data/{data_name}{wildcards.suff}'
 
 
+rule annotate_VCF:
+    input:
+        vcf = out_folder + "clean_data/" + data_name + "{suff}"
+    output:
+        vcf = out_folder + "clean_data/" + data_name + ".anno.{suff}"
+    params:
+        ensembl = "/sc/arion/projects/ad-omics/data/references/hg38_reference/ensembl/ensembl_v99_hg38.vcf.gz" 
+    shell:
+        "ml bcftools/1.9;"
+        "bcftools annotate -Oz -o {output.vcf} -a {params.ensembl} -c ID {input.vcf};"
+        #"tabix {output.vcf}"
+
+
 # New rule to index the file. 
 # Why? Because if the indexing fails as it's doing now, a new rule will prevent the need to re-concat all the files which takes bloody forever.
 rule index_files:
     input:
-        out_folder + "clean_data/" + data_name + "{suff}"
+        out_folder + "clean_data/" + data_name + ".anno.{suff}"
     output:
-        out_folder + "clean_data/" + data_name + "{suff}.tbi"
+        out_folder + "clean_data/" + data_name + ".anno.{suff}.tbi"
     shell:
         'ml bcftools;\
          tabix {input}'
@@ -211,8 +224,8 @@ rule index_files:
 # This step DOES delete all the intermediate files though (if specified by user)
 rule relatedness_ancestry:
     input:
-        out_folder + "clean_data/" + data_name + "_noMAF.vcf.gz",
-        out_folder + "clean_data/" + data_name + "_noMAF.vcf.gz.tbi"
+        out_folder + "clean_data/" + data_name + ".anno.noMAF.vcf.gz",
+        out_folder + "clean_data/" + data_name + ".anna.noMAF.vcf.gz.tbi"
     output:
         out_folder + "population/somalier.html",
         out_folder + "population/somalier-ancestry.somalier-ancestry.html"
