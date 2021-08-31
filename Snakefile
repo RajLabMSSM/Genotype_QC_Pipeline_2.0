@@ -2,7 +2,8 @@ import os
 import glob
 import pathlib
 
-configfile: "config.yaml"
+# DON"T HARD CODE THE NAME OF THE CONFIG FILE
+#configfile: "config.yaml"
 
 in_folder = config['in_folder']
 file_type = config['input_type']
@@ -56,10 +57,12 @@ rule all:
     input:
         #temp_output
         #expand(out_folder + 'MAF/{file_name}.vcf.gz', file_name=file_names),
-        expand(out_folder + "clean_data/" + data_name + ".anno.{suff}", suff=['MAF.vcf.gz', 'noMAF.vcf.gz']),
+        expand(out_folder + "clean_data/" + data_name + "_anno.{suff}", suff=['MAF.vcf.gz', 'noMAF.vcf.gz']),
         #out_folder + "clean_data/" + data_name + "_noMAF.vcf.gz",
         #out_folder + "population/somalier.html",
-        out_folder + "population/somalier-ancestry.somalier-ancestry.html"
+        out_folder + "population/" + data_name + ".somalier.ancestry.html",
+        out_folder + "population/" + data_name + ".somalier.relatedness.html"
+        #out_folder + "population/somalier-ancestry.somalier-ancestry.html"
         #ancestry_output,
         #relatedness_output,
         #outFolder + data_name + "/filtered_data/" + data_name + ".MAF.vcf.gz",
@@ -177,33 +180,35 @@ rule merge_files:
         #out_folder + "temp2/" + "merged_" + data_name + "{suff}.tbi"
     shell: 
         'ml bcftools;\
-         bcftools concat {input} | bgzip -c > {out_folder}clean_data/{data_name}{wildcards.suff}'
-
-
-rule annotate_VCF:
-    input:
-        vcf = out_folder + "clean_data/" + data_name + ".{suff}"
-    output:
-        vcf = out_folder + "clean_data/" + data_name + ".anno.{suff}"
-    params:
-        ensembl = "/sc/arion/projects/ad-omics/data/references/hg38_reference/ensembl/ensembl_v99_hg38.vcf.gz" 
-    shell:
-        "ml bcftools/1.9;"
-        "bcftools annotate -Oz -o {output.vcf} -a {params.ensembl} -c ID {input.vcf};"
-        #"tabix {output.vcf}"
+         bcftools concat {input} | bgzip -c > {out_folder}clean_data/{data_name}.{wildcards.suff}'
 
 
 # New rule to index the file. 
 # Why? Because if the indexing fails as it's doing now, a new rule will prevent the need to re-concat all the files which takes bloody forever.
 rule index_files:
     input:
-        out_folder + "clean_data/" + data_name + ".anno.{suff}"
+        out_folder + "clean_data/" + data_name + ".{suff}"
     output:
-        out_folder + "clean_data/" + data_name + ".anno.{suff}.tbi"
+        out_folder + "clean_data/" + data_name + ".{suff}.tbi"
     shell:
         'ml bcftools;\
          tabix {input}'
 
+
+# annotate VCF with SNP information
+rule annotate_VCF:
+    input:
+        vcf = out_folder + "clean_data/" + data_name + ".{suff}",
+        tbi =  out_folder + "clean_data/" + data_name + ".{suff}.tbi"
+    output:
+        vcf = out_folder + "clean_data/" + data_name + "_anno.{suff}",
+        tbi = out_folder + "clean_data/" + data_name + "_anno.{suff}.tbi"
+    params:
+        ensembl = "/sc/arion/projects/ad-omics/data/references/hg38_reference/ensembl/ensembl_v99_hg38.vcf.gz" 
+    shell:
+        "ml bcftools/1.9;"
+        "bcftools annotate -Oz -o {output.vcf} -a {params.ensembl} -c ID {input.vcf};"
+        "tabix {output.vcf}"
 
 # sorting vcf file
 #rule sort_files:
@@ -224,11 +229,11 @@ rule index_files:
 # This step DOES delete all the intermediate files though (if specified by user)
 rule relatedness_ancestry:
     input:
-        out_folder + "clean_data/" + data_name + ".anno.noMAF.vcf.gz",
-        out_folder + "clean_data/" + data_name + ".anna.noMAF.vcf.gz.tbi"
+        vcf = out_folder + "clean_data/" + data_name + "_anno.noMAF.vcf.gz",
+        tbi = out_folder + "clean_data/" + data_name + "_anno.noMAF.vcf.gz.tbi"
     output:
-        out_folder + "population/somalier.html",
-        out_folder + "population/somalier-ancestry.somalier-ancestry.html"
+        out_folder + "population/" + data_name + ".somalier.ancestry.html",
+        out_folder + "population/" + data_name + ".somalier.relatedness.html"
     params:
         sites="/sc/arion/projects/ad-omics/data/software/somalier_0.2.12/sites/sites.hg38.vcf.gz",
         ref="/sc/arion/projects/ad-omics/data/references/hg38_reference/hg38.fa",
@@ -236,10 +241,14 @@ rule relatedness_ancestry:
         labeled_samples="/sc/arion/projects/ad-omics/data/software/somalier_0.2.12/ancestry/1kg-somalier/"
     run:
         shell('somalier=/sc/arion/projects/ad-omics/data/software/somalier_0.2.12/somalier;\
-               $somalier extract -d {out_folder}population/extracted/ --sites {params.sites} -f {params.ref} {out_folder}clean_data/{data_name}_noMAF.vcf.gz;\
+               $somalier extract -d {out_folder}population/extracted/ --sites {params.sites} -f {params.ref} {input.vcf};\
                cd {out_folder}population/;\
                $somalier relate extracted/*.somalier;\
-               $somalier ancestry --labels {params.ancestry_labels} {params.labeled_samples}*.somalier ++ extracted/*.somalier')
+               $somalier ancestry --labels {params.ancestry_labels} {params.labeled_samples}*.somalier ++ extracted/*.somalier;\
+               rename somalier {data_name}.somalier somalier* ;\
+               mv {data_name}.somalier.html {data_name}.somalier.relatedness.html; \
+               mv {data_name}.somalier-ancestry.somalier-ancestry.html {data_name}.somalier.ancestry.html; \
+             ')
         if keep_int==0:
             shell('rm -rf {out_folder}prepped_data;\
                    rm -rf {out_folder}missing;\
