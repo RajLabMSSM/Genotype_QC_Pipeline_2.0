@@ -56,7 +56,7 @@ rule all:
     input:
         #temp_output
         #expand(out_folder + 'MAF/{file_name}.vcf.gz', file_name=file_names),
-        expand(out_folder + "clean_data/" + data_name + "{suff}", suff=['MAF.vcf.gz', 'noMAF.vcf.gz']),
+        expand(out_folder + "clean_data/" + data_name + ".anno.{suff}", suff=['MAF.vcf.gz', 'noMAF.vcf.gz']),
         #out_folder + "clean_data/" + data_name + "_noMAF.vcf.gz",
         #out_folder + "population/somalier.html",
         out_folder + "population/somalier-ancestry.somalier-ancestry.html"
@@ -171,9 +171,9 @@ rule merge_files:
     input:
         #expand(out_folder + "temp/{file_name}_MAF.vcf.gz", file_name=file_names),
         #expand(out_folder + "temp/{file_name}_noMAF.vcf.gz", file_name=file_names)
-        expand(out_folder + "temp/{file_name}_sorted{{suff}}", file_name=file_names)
+        expand(out_folder + "temp/{file_name}_sorted_{{suff}}", file_name=file_names)
     output:
-        out_folder + "clean_data/" + data_name + "{suff}"
+        out_folder + "clean_data/" + data_name + ".{suff}"
         #out_folder + "temp2/" + "merged_" + data_name + "{suff}.tbi"
     shell: 
         'ml bcftools;\
@@ -182,7 +182,7 @@ rule merge_files:
 
 rule annotate_VCF:
     input:
-        vcf = out_folder + "clean_data/" + data_name + "{suff}"
+        vcf = out_folder + "clean_data/" + data_name + ".{suff}"
     output:
         vcf = out_folder + "clean_data/" + data_name + ".anno.{suff}"
     params:
