@@ -3,7 +3,7 @@ import glob
 import pathlib
 
 # DON"T HARD CODE THE NAME OF THE CONFIG FILE
-#configfile: "config.yaml"
+
 
 in_folder = config['in_folder']
 file_type = config['input_type']
@@ -58,10 +58,12 @@ rule all:
         #temp_output
         #expand(out_folder + 'MAF/{file_name}.vcf.gz', file_name=file_names),
         expand(out_folder + "clean_data/" + data_name + "_anno.{suff}", suff=['MAF.vcf.gz', 'noMAF.vcf.gz']),
+        expand(out_folder + "stats/" + data_name + "_anno.{suff}_stats.txt", suff=['MAF.vcf.gz', 'noMAF.vcf.gz']),
         #out_folder + "clean_data/" + data_name + "_noMAF.vcf.gz",
         #out_folder + "population/somalier.html",
         out_folder + "population/" + data_name + ".somalier.ancestry.html",
-        out_folder + "population/" + data_name + ".somalier.relatedness.html"
+        out_folder + "population/" + data_name + ".somalier.relatedness.html",
+        out_folder + "population/" + data_name + ".somalier.ancestry.PCs.tsv"
         #out_folder + "population/somalier-ancestry.somalier-ancestry.html"
         #ancestry_output,
         #relatedness_output,
@@ -233,7 +235,8 @@ rule relatedness_ancestry:
         tbi = out_folder + "clean_data/" + data_name + "_anno.noMAF.vcf.gz.tbi"
     output:
         out_folder + "population/" + data_name + ".somalier.ancestry.html",
-        out_folder + "population/" + data_name + ".somalier.relatedness.html"
+        out_folder + "population/" + data_name + ".somalier.relatedness.html",
+        out_folder + "population/" + data_name + ".somalier.ancestry.tsv"
     params:
         sites="/sc/arion/projects/ad-omics/data/software/somalier_0.2.12/sites/sites.hg38.vcf.gz",
         ref="/sc/arion/projects/ad-omics/data/references/hg38_reference/hg38.fa",
@@ -247,6 +250,7 @@ rule relatedness_ancestry:
                $somalier ancestry --labels {params.ancestry_labels} {params.labeled_samples}*.somalier ++ extracted/*.somalier;\
                rename somalier {data_name}.somalier somalier* ;\
                mv {data_name}.somalier.html {data_name}.somalier.relatedness.html; \
+               mv {data_name}.somalier-ancestry.somalier-ancestry.tsv {data_name}.somalier.ancestry.tsv; \
                mv {data_name}.somalier-ancestry.somalier-ancestry.html {data_name}.somalier.ancestry.html; \
              ')
         if keep_int==0:
@@ -257,7 +261,25 @@ rule relatedness_ancestry:
                    rm -rf {out_folder}temp')
 
 
+rule make_PCs_for_tensorQTL:
+    input:
+        out_folder + "population/" + data_name + ".somalier.ancestry.tsv"
+    output:
+        out_folder + "population/" + data_name + ".somalier.ancestry.PCs.tsv"
+    params:
+        script = "scripts/make_ancestry_PCs.R"
+    shell:
+        "ml R/4.0.3;"
+        "Rscript {params.script} --inFile {input} --outFile {output}"
 
 
-
+rule get_stats:
+    input:
+        vcf = out_folder + "clean_data/" + data_name + "_anno.{suff}",
+        tbi = out_folder + "clean_data/" + data_name + "_anno.{suff}.tbi"
+    output:
+        out_folder + "stats/" + data_name + "_anno.{suff}_stats.txt"
+    shell:
+        "ml bcftools; "
+        "bcftools stats {input.vcf} > {output} "
 
