@@ -137,16 +137,18 @@ rule MAF:
 # Create a new list containing only the intersection of all sample IDs - i.e. only the samples that exist in ALL chrom files
 rule generate_sample_IDs:
     input:
-        expand(out_folder + "hwe/{file_name}.vcf.gz", file_name=file_names),
-        expand(out_folder + "MAF/{file_name}.vcf.gz", file_name=file_names)
+        hwe = expand(out_folder + "hwe/{file_name}.vcf.gz", file_name=file_names),
+        maf = expand(out_folder + "MAF/{file_name}.vcf.gz", file_name=file_names)
     output:
         out_folder + "temp/sample_intersection.txt"
         #expand(out_folder + "temp/{file_name}_samples.txt", file_name=file_names)
     run:
         shell('ml bcftools;\
+               NFILE=$(ls {input.maf} | tr \" \" \"\\n\" | wc -l);\
+               echo \"Files to check: $NFILE\";\
                rm -rf {out_folder}temp; mkdir -p {out_folder}temp;\
                for i in {out_folder}MAF/*.vcf.gz; do bcftools query -l $i >> {out_folder}temp/$(basename -s .vcf.gz $i)_samples.txt; done;\
-               sort {out_folder}/temp/* | uniq -d >> {out_folder}/temp/sample_intersection.txt')
+               sort {out_folder}/temp/*samples.txt | uniq -c | awk -v x=$NFILE \'$1 >= x {{print $2}}\' >> {out_folder}/temp/sample_intersection.txt')
 
 # Filter each chrom file using the new list of intersected IDs
 rule filter_files:
