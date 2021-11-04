@@ -14,7 +14,7 @@ data_name: "BipSeq_1M"
 # Do you want to keep the intermediate files? It can be helpful for debugging
 # They do take up a lot of storage though. 0 = No; 1 = Yes. 
 # We suggest keep files only on small test data.
-keep_intermediate: 0
+keep_intermediate: 1
 
 # Filter Thresholds:
 # Missingness
@@ -26,5 +26,5 @@ MAF: 0.01
 
 # Hardy Weinberg
 hwe_step1: 1e-6
-hwe_step2: 1e-10
+hwe_step2: 1e-6
 

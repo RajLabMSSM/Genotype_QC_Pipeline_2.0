@@ -63,7 +63,8 @@ rule all:
         #out_folder + "population/somalier.html",
         out_folder + "population/" + data_name + ".somalier.ancestry.html",
         out_folder + "population/" + data_name + ".somalier.relatedness.html",
-        out_folder + "population/" + data_name + ".somalier.ancestry.PCs.tsv"
+        out_folder + "population/" + data_name + ".somalier.ancestry.PCs.tsv",
+        out_folder + "stats/" + data_name + "_report.html"
         #out_folder + "population/somalier-ancestry.somalier-ancestry.html"
         #ancestry_output,
         #relatedness_output,
@@ -284,4 +285,36 @@ rule get_stats:
     shell:
         "ml bcftools; "
         "bcftools stats {input.vcf} > {output} "
+
+
+rule QC_report:
+    input:
+        ancestry_path = out_folder + "population/" + data_name + ".somalier.ancestry.html",
+        relatedness_path = out_folder + "population/" + data_name + ".somalier.relatedness.html"
+    output:
+        out_folder + "stats/" + data_name + "_report.html"
+    params:
+        data_name = data_name,
+        script = "scripts/genotype_qc_figures.Rmd",
+        output_dir = out_folder + "stats/",
+        QC_stats = out_folder + "QC_stats/",
+        maf = config['MAF'],
+        hwe = config['hwe_step2'],
+        geno = config['miss_SNP'],
+        mind = config['miss_ind']
+    shell: """
+ml R/3.6.0; Rscript -e 'rmarkdown::render(\
+"{params.script}", clean = TRUE, \
+output_file = "{output}", \
+output_dir = "{params.output_dir}", \
+params = list(data_name = "{params.data_name}", \
+qc_stats_folder = "{params.QC_stats}", \
+maf_thresh = "{params.maf}", \
+hwe_thresh = "{params.hwe}", \
+geno_thresh = "{params.geno}", \
+mind_thresh = "{params.mind}", \
+ancestry_path = "{input.ancestry_path}", \
+relatedness_path = "{input.relatedness_path}" \
+))' --slave
+		"""
 

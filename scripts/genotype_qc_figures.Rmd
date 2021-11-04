@@ -1,0 +1,119 @@
+---
+title: "Genotype_QC_figures"
+output:
+  html_document:
+    df_print: paged
+    code_folding: hide
+    keep_md: false
+    toc: true
+    number_sections: false
+    toc_depth: 4
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+
+params:
+  data_name: data_name
+  qc_stats_folder: qc_stats_folder
+  maf_thresh: maf_thresh
+  hwe_thresh: hwe_thresh
+  geno_thresh: geno_thresh
+  mind_thresh: mind_thresh
+  ancestry_path: ancestry_path
+  relatedness_path: relatedness_path
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+
+```{r echo=FALSE,results='hide',fig.keep='all'}
+qc_stats_folder <- params$qc_stats_folder
+maf_threshold <- params$maf_thresh
+hwe_thresh <- params$hwe_thresh
+geno_thresh <- params$geno_thresh
+mind_thresh <- params$mind_thresh
+relatedness_path <- params$relatedness_path
+ancestry_path <- params$ancestry_path
+
+qc_stats_folder <- '/sc/arion/projects/bigbrain/data/genotypes/BipSeq/vcfs/QCed_genotypes/1M/QC_stats/'
+maf_threshold <- 0.01
+hwe_thresh <- 1e-6
+geno_thresh <- 0.2
+mind_thresh <- 0.2
+relatedness_path <- '/sc/arion/projects/bigbrain/data/genotypes/BipSeq/vcfs/QCed_genotypes/1M/population/BipSeq_1M.somalier.relatedness.html'
+ancestry_path <- '/sc/arion/projects/bigbrain/data/genotypes/BipSeq/vcfs/QCed_genotypes/1M/population/BipSeq_1M.somalier.ancestry.html'
+```
+
+
+```{r read data,include=FALSE}
+# missingness data
+smiss_files <- list.files(qc_stats_folder, pattern = '*smiss', full.names = TRUE)
+vmiss_files <- list.files(qc_stats_folder, pattern = '*vmiss', full.names = TRUE)
+invisible(mdf_smiss <- map_df(smiss_files, read_tsv, .id = "chr"))
+invisible(SNP_miss_df <- map_df(vmiss_files, read_tsv, .id = "chr"))
+
+# maf data
+maf_files <- list.files(qc_stats_folder, pattern = '*afreq', full.names = TRUE)
+invisible(maf_df <- map_df(maf_files, read_tsv, .id = "#CHROM"))
+
+# hwe data
+hwe_files <- list.files(qc_stats_folder, pattern = '*hardy', full.names = TRUE)
+invisible(hwe_df <- map_df(hwe_files, read_tsv, .id = '#CHROM'))
+```
+
+## Missingness
+
+```{r missingness, echo=FALSE,results='hide',fig.keep='all'}
+#qc_stats_folder <- '/sc/arion/projects/bigbrain/data/genotypes/BipSeq/vcfs/QCed_genotypes/1M/QC_stats/'
+names(smiss_files) <- gsub(".dose_missingness.smiss", "", basename(smiss_files))
+names(vmiss_files) <- gsub(".dose_missingness.vmiss", "", basename(vmiss_files))
+
+ind_miss_df <- group_by(mdf_smiss, `#IID` ) %>% summarise(missing = sum(MISSING_CT), obs = sum(OBS_CT), fmiss = sum(F_MISS))
+
+low_ind_miss <- filter(ind_miss_df, fmiss > mind_thresh)
+low_SNP_miss <- filter(SNP_miss_df, F_MISS > geno_thresh)
+
+hist(SNP_miss_df$F_MISS, main = 'Histogram SNP missingness', col = 'blue')
+hist(ind_miss_df$fmiss, main = 'Histogram individual missingness', col = 'blue')
+if (dim(low_ind_miss)[1] != 0) {
+  hist(low_ind_miss$fmiss, main = 'individual missingness below threshold')
+}
+if (dim(low_SNP_miss)[1] != 0) {
+  hist(low_SNP_miss$F_MISS, main = 'SNP missingness below threshold')
+} 
+```
+
+## MAF
+```{r MAF, echo=FALSE,results='hide',fig.keep='all'}
+low_maf <- filter(maf_df, ALT_FREQS < maf_threshold)
+hist(maf_df$ALT_FREQS, main = 'histogram of MAF values', xlab = 'MAF', col = 'blue')
+hist(low_maf$ALT_FREQS, main = 'MAF values below threshold', xlab = 'MAF', density = 30, col = 'red')
+```
+
+
+## Hardy Weinberg Equilibrium
+
+```{r HWE, echo=FALSE,results='hide',fig.keep='all'}
+low_hwe <- filter(hwe_df, P<hwe_thresh)
+hist(hwe_df$P, main = "histogram of HWE P-values", xlab = "HWE p-value", col = 'blue')
+hist(low_hwe$P, main = "HWE P-values below threshold", xlab = "HWE p-value", density = 30, col = 'red')
+```
+
+
+## Relatedness 
+```{r Relatedness}
+shiny::includeHTML(relatedness_path)
+
+```
+
+
+
+## Ancestry 
+```{r ancestry}
+shiny::includeHTML(ancestry_path)
+```
