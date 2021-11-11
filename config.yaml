@@ -1,20 +1,20 @@
 
 # Give the path to the folder containing all input files 
-in_folder: "/sc/arion/projects/bigbrain/data/genotypes/BipSeq/vcfs/imputed_genotypes/1M/job-20211015-201944-526-BipSeq_1M/local/"
+in_folder: "/sc/arion/projects/bigbrain/data/genotypes/UCLA-ASD/vcfs/imputed_genotypes/job-20211026-202321-996-UCLA_ASD/local/"
 
 # Specify the file type of your inputs. Can be 'vcf' or 'plink'
 input_type: "vcf" 
 
 # Path to the output folder where QCed data files will be written
-out_folder: "/sc/arion/projects/bigbrain/data/genotypes/BipSeq/vcfs/QCed_genotypes/1M/"
+out_folder: "/sc/arion/projects/bigbrain/data/genotypes/UCLA-ASD/vcfs/QCed_genotypes/UCLA_ASD/"
 
 # Name of your data - the output files generated will be named <data_name>_hg38_all_chr.vcf.gz
-data_name: "BipSeq_1M"
+data_name: "UCLA_ASD"
 
 # Do you want to keep the intermediate files? It can be helpful for debugging
 # They do take up a lot of storage though. 0 = No; 1 = Yes. 
 # We suggest keep files only on small test data.
-keep_intermediate: 1
+keep_intermediate: 0
 
 # Filter Thresholds:
 # Missingness
