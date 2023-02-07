@@ -1,16 +1,23 @@
 ---
-title: "Genotype_QC_figures"
+title: "Genotype QC Report"
+author:  |
+ | Ben Muller 
+ | Raj Lab
+ | Department of Neuroscience
+ | Icahn School of Medicine at Mount Sinai
+ | NYC, New York
+date: "`r Sys.Date()`"
+runtime: shiny
 output:
-  html_document:
-    df_print: paged
-    code_folding: hide
-    keep_md: false
-    toc: true
-    number_sections: false
-    toc_depth: 4
-    toc_float:
-      collapsed: false
-      smooth_scroll: false
+ rmarkdown::html_document:
+   theme: cerulean
+   highlight: haddock
+   code_folding: hide
+   toc: true
+   toc_float: true
+   smooth_scroll: true
+   number_sections: false
+   self_contained: true
 
 params:
   data_name: data_name
@@ -40,13 +47,13 @@ mind_thresh <- params$mind_thresh
 relatedness_path <- params$relatedness_path
 ancestry_path <- params$ancestry_path
 
-qc_stats_folder <- '/sc/arion/projects/bigbrain/data/genotypes/BipSeq/vcfs/QCed_genotypes/1M/QC_stats/'
-maf_threshold <- 0.01
-hwe_thresh <- 1e-6
-geno_thresh <- 0.2
-mind_thresh <- 0.2
-relatedness_path <- '/sc/arion/projects/bigbrain/data/genotypes/BipSeq/vcfs/QCed_genotypes/1M/population/BipSeq_1M.somalier.relatedness.html'
-ancestry_path <- '/sc/arion/projects/bigbrain/data/genotypes/BipSeq/vcfs/QCed_genotypes/1M/population/BipSeq_1M.somalier.ancestry.html'
+#qc_stats_folder <- '/sc/arion/projects/bigbrain/data/genotypes/BipSeq/vcfs/QCed_genotypes/1M/QC_stats/'
+#maf_threshold <- 0.01
+#hwe_thresh <- 1e-6
+#geno_thresh <- 0.2
+#mind_thresh <- 0.2
+#relatedness_path <- '/sc/arion/projects/bigbrain/data/genotypes/BipSeq/vcfs/QCed_genotypes/1M/population/BipSeq_1M.somalier.relatedness.html'
+#ancestry_path <- '/sc/arion/projects/bigbrain/data/genotypes/BipSeq/vcfs/QCed_genotypes/1M/population/BipSeq_1M.somalier.ancestry.html'
 ```
 
 
